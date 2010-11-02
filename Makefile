@@ -7,7 +7,8 @@ all:
 	echo 'please read the document for making the live cd..... its README file in current dir :P' 
 	echo 'thank you :D' 
 
-prepare: mkdir pacman-sync copy-pac mount pacman-base pacman-kernel26 pacman-extra mkinitramfs
+prepare: mkdir pacman-sync pacman-base copy-pac pacman-kernel26 pacman-extra mkinitramfs
+finish: prepare mksquashfs iso-image
 
 copy-pac:
 	cp -f ./conf/pacman.conf ./root/etc/pacman.conf
