@@ -10,8 +10,8 @@ all:
 prepare: mkdir pacman-sync copy-pac mount pacman-base pacman-kernel26 pacman-extra mkinitramfs
 
 copy-pac:
-	cp ./conf/pacman.conf ./root/etc/
-	cp ./conf/mirrorlist ./root/etc/pacman.d/
+	cp -f ./conf/pacman.conf ./root/etc/pacman.conf
+	cp -f ./conf/mirrorlist ./root/etc/pacman.d/mirrorlist
 mount:
 	mount -t sysfs sysfs "root/sys"
 	mount -t proc proc "root/proc"
@@ -32,9 +32,9 @@ umount:
 	umount "root/var/lib/dbus" ; echo "----------------umount done-------------- "
 
 mkdir: 
-	mkdir -p boot root/{var/{lib/{pacman,dbus},cache/pacman/pkg,run},dev,proc,sys,etc/pacman.d,root,tmp} squashmod mkinitrd iso
+	mkdir -p boot root/{var/{lib/{pacman,dbus},cache/pacman/pkg,run},dev,proc,sys,etc/pacman.d,root,tmp} iso
 clean: umount
-	rm -rf boot squashmod mkinitrd root
+	rm -rf boot root
 
 # pacman maintenance operations
 pacman-sync:
@@ -43,7 +43,6 @@ pacman-update:
 	setarch $(ARCH) pacman --config ./root/etc/pacman.conf --root ./root -Su
 # package installation
 pacman-base:
-	rm root/etc/pacman.conf root/etc/pacman.d/mirrorlist;\
 	setarch $(ARCH) pacman --config ./conf/pacman.conf --root ./root -S base $(BASE)
 pacman-kernel26:
 	sed -i s/autodetect/'usb lvm2'/ ./root/etc/mkinitcpio.conf;\
