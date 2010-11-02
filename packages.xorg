@@ -4,4 +4,5 @@ xorg-video-drivers
 mesa
 xorg-xinit
 gtk2
+ttf-dejavu
 

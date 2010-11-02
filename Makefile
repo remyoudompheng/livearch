@@ -68,7 +68,7 @@ mkinitramfs:
 iso-image:
 	genisoimage -R -b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 -boot-info-table -o live_disk.iso ./iso
 mksquashfs: umount
-	mksquashfs ./root root.squashfs -always-use-fragments -comp lzma
-	mksquashfs ./overlay overlay.squashfs -always-use-fragments -comp lzma
+	mksquashfs ./root root.squashfs -always-use-fragments
+	mksquashfs ./overlay overlay.squashfs -always-use-fragments
 	mv ./root.squashfs ./iso/root.squashfs
 	mv ./overlay.squashfs ./iso/overlay.squashfs
