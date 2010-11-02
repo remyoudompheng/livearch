@@ -13,3 +13,13 @@ wireless_tools
 zd1211-firmware
 zsh
 
+sudo
+make
+patch
+pkg-config
+zip
+unzip
+unrar
+openssh
+unison
+rsync

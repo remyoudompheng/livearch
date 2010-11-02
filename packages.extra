@@ -1,13 +1,19 @@
 gvim
 emacs
-zsh
+git
+tig
 gparted
 gstreamer0.10-ugly-plugins
 
 firefox
+evince
+xpdf
 totem
 gnome-session
 gnome-control-center
 gnome-applets
 network-manager-applet
+
+pidgin
+weechat
 
