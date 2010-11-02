@@ -1,0 +1,10 @@
+timeout   5
+default   0       
+title  Archlinux LiveCD
+kernel  /boot/vmlinuz26 quiet ro
+initrd  /boot/initrd.cpio.igz
+boot
+title  Archlinux LiveCD (nomodeset - for some nvidia GPU)
+kernel  /boot/vmlinuz26 quiet ro nomodeset
+initrd  /boot/initrd.cpio.igz
+boot

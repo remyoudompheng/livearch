@@ -55,27 +55,15 @@ pacman-extra:
 mkinitramfs:
 	cp -rf ./root/boot/* ./boot
 	cp ./root/usr/lib/grub/i386-pc/stage2_eltorito ./boot/grub/
-	rm ./boot/kernel26-fallback.img
-	mkdir ./boot/ramfs -p
-	gzip -d ./boot/kernel26.img -c > ./boot/ramfs/_cpio
+	mkdir -p ./boot/ramfs
+	cd ./boot/ramfs;bsdtar xf ../kernel26.img
 	rm ./boot/kernel26.img
-	cd ./boot/ramfs;bsdtar -x -f _cpio; rm _cpio;
-	rm ./boot/ramfs/init
-	cp ./conf/init ./boot/ramfs/
+	rm ./boot/kernel26-fallback.img
+	cp -f ./conf/init ./boot/ramfs/init
 	cd ./boot/ramfs; find . | cpio -H newc -o | gzip > ../initrd.cpio.igz
 	rm -rf ./boot/ramfs
-	rm ./boot/grub/menu.lst
-	echo "timeout   5" >> ./boot/grub/menu.lst
-	echo "default   0	" >> ./boot/grub/menu.lst
-	echo "title  poison's live cd  \m/" >> ./boot/grub/menu.lst
-	echo "kernel  /boot/vmlinuz26 quiet ro" >> ./boot/grub/menu.lst
-	echo "initrd  /boot/initrd.cpio.igz" >> ./boot/grub/menu.lst
-	echo "boot" >> ./boot/grub/menu.lst
-	echo "title  poison's live cd  \m/ ( nomodeset- for some nvidia GPU )" >> ./boot/grub/menu.lst
-	echo "kernel  /boot/vmlinuz26 quiet ro nomodeset" >> ./boot/grub/menu.lst
-	echo "initrd  /boot/initrd.cpio.igz" >> ./boot/grub/menu.lst
-	echo "boot" >> ./boot/grub/menu.lst
-	cp ./boot ./iso -rf
+	cp -f ./conf/menu.lst ./boot/grub/menu.lst
+	cp -rf ./boot ./iso
 	
 iso-image:
 	genisoimage -R -b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 -boot-info-table -o live_disk.iso ./iso
