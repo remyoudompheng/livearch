@@ -1,0 +1,305 @@
+#!/bin/busybox ash
+/bin/busybox --install -s
+. /init_functions
+echo ":: Loading Initramfs"
+/bin/mount -t proc proc /proc
+/bin/mount -t sysfs sys /sys
+if grep -q devtmpfs /proc/filesystems 2>/dev/null; then
+  /bin/mount -n -t devtmpfs udev /dev -o mode=0755,size=10M,nosuid
+else
+  /bin/mount -n -t tmpfs udev /dev -o mode=0755,size=10M,nosuid
+  # We don't have devtmpfs, so add the most important standard devices
+  /bin/mknod /dev/null c 1 3
+  /bin/mknod /dev/zero c 1 5
+  /bin/mknod /dev/console c 5 1
+  # /dev/mem is needed if we want to load uvesafb before triggering uevents
+  /bin/mknod /dev/mem c 1 1
+fi
+
+read CMDLINE </proc/cmdline
+export CMDLINE
+
+export root=""
+export init=""
+echo "/sbin/modprobe" > /proc/sys/kernel/modprobe
+
+# set default mount handler
+mount_handler="default_mount_handler"
+
+# if available, start udevd at this stage
+if [ -x /sbin/udevd ]; then
+    echo ":: Starting udevd..."
+    echo > /proc/sys/kernel/hotplug
+    /sbin/udevd --daemon --resolve-names=never
+    export udevd_running=1
+    echo "done."
+else
+    export udevd_running=0
+fi
+
+for cmd in ${CMDLINE}; do
+    case "${cmd}" in
+        \#*) break ;; # ignore everything after a # in the commandline
+        # The kernel passes those to the kernel on its own
+        [0123456Ss]) ;;
+        [0-9]*) ;;
+        single) ;;
+        rw) readwrite="yes" ;;
+        ro) readwrite="no" ;;
+        # only export stuff that does work with ash :)
+        *=*) rhs="$(echo "${cmd}" | cut -d= -f2-)"
+             cmd="$(echo "${cmd}" | cut -d= -f1 | sed 's|\.|_|g')"
+             cmd="$(echo "${cmd}" | sed 's|-|_|g')=${rhs}"
+             (echo "${cmd}" | grep -qe '^[0-9]') || export "${cmd}"
+             ;;
+        *)   cmd="$(echo "${cmd}" | sed 's|\.|_|g')"
+             cmd="$(echo "${cmd}" | sed 's|-|_|g')"
+             (echo "${cmd}" | grep -qe '^[0-9]') || export "${cmd}=y"
+             ;;
+    esac
+done
+
+if [ -n "${disablehooks}" ]; then
+    for d in $(echo "${disablehooks}" | sed 's|,| |g'); do
+        export "hook_${d}=disabled"
+    done
+fi
+
+if [ -n "${disablemodules}" ]; then
+    for d in $(echo "${disablemodules}" | sed 's|,| |g'); do
+        export "mod_${d}=disabled"
+    done
+fi
+
+if [ -n "${earlymodules}" ]; then
+    for m in $(echo "${earlymodules}" | sed 's|,| |g'); do
+        /sbin/modprobe -q ${m} > /dev/null 2>&1
+    done
+fi
+
+. /config
+
+for m in ${MODULES}; do
+    TST=""
+    eval "TST=\$mod_${m}"
+    if [ "${TST}" != "disabled" ]; then
+        /sbin/modprobe -q ${m} > /dev/null 2>&1
+    fi
+done
+
+# If rootdelay is empty or not a non-negative integer, set it to 10
+if [ -z "${rootdelay}" ] || ! [ "${rootdelay}" -ge 0 ]; then
+    export rootdelay=10
+fi
+
+if [ -e "/hooks" ]; then
+    for h in ${HOOKS}; do
+        TST=""
+        eval "TST=\$hook_${h}"
+        if [ "${TST}" != "disabled" ]; then
+            run_hook () { echo "${h}: no run function defined"; }
+            if [ -e "/hooks/${h}" ]; then
+               . /hooks/${h}
+               echo ":: Running Hook [${h}]"
+               run_hook
+            fi
+        fi
+    done
+fi
+
+if [ "${break}" = "y" ]; then
+    echo ":: Break requested, type 'exit' to resume operation"
+    launch_interactive_shell
+fi
+
+if [ -f "/message" ]; then
+    echo "$(cat /message)"
+fi
+
+# Mount root at /new_root
+#mkdir -p /new_root
+#${mount_handler} /new_root
+
+#[ -z "${init}" ] && init="/sbin/init"
+#if [ "$(stat -c %D /)" = "$(stat -c %D /new_root)" ]; then
+    # Nothing got mounted on /new_root. This is the end, we don't know what to do anymore
+    # We fall back into a shell, but the shell has now PID 1
+    # This way, manual recovery is still possible.
+#    err "Failed to mount the real root device."
+#    echo "Bailing out, you are on your own. Good luck."
+#    echo
+#    launch_interactive_shell --exec
+#elif [ ! -x "/new_root${init}" ]; then
+    # Successfully mounted /new_root, but ${init} is missing
+    # The same logic as above applies
+#    err "Root device mounted successfully, but ${init} does not exist."
+#    echo "Bailing out, you are on your own. Good luck."
+#    echo
+#    launch_interactive_shell --exec
+#fi
+
+
+
+# added by poison, V.govindarajulu
+
+
+
+
+for i in ${CMDLINE}
+ do
+  if [ "$i" = "droptoshell" ]
+   then
+    echo "droping to shell as requested by user through kernel argument"
+    launch_interactive_shell --exec
+  elif [ "${i:0:9}" = "userroot=" ]
+   then
+   NODES=`cut $i -d= -f2`
+  fi 
+done
+mkdir -p /mnt/live_root             #root fs
+mkdir -p /mnt/live_cdrom
+mkdir -p /mnt/tmpfs
+mkdir -p /mnt/unionfs
+mkdir -p /mnt/modules
+RAMSIZE=`head -n 1 < /proc/meminfo | cut -d: -f2 | cut -dk -f1`
+RAMSIZE=$(($RAMSIZE/1024))
+echo "ram = $RAMSIZE"
+if [ $RAMSIZE -lt 0 ]
+then
+TMPSIZE=128
+elif [ $RAMSIZE -gt 3700 ]
+then
+TMPSIZE=1000
+else
+TMPSIZE=$(($RAMSIZE/4))
+fi
+MEMFREE=`head -n 2 < /proc/meminfo | tail -n 1 | cut -d: -f2 | cut -dk -f1`
+MEMFREE=$(($MEMFREE/1024))
+if [ $MEMFREE -lt 100 ]
+then
+echo "only $MEMFREE mb free"
+echo "no enough memory"
+echo "droping to shell"  
+launch_interactive_shell --exec
+fi
+echo "Total ram : $RAMSIZE MB"
+TMPSIZE=$(($TMPSIZE*1024*1024))
+mount -t tmpfs -o "size=$TMPSIZE" none /mnt/tmpfs || ( echo "mounting ramfs_tmp failed. Dropping to shell" && launch_interactive_shell --exec )
+modprobe loop
+FS="auto iso9660 ext4 ext3 ext2 ntfs ntfs-3g vfat fat16 fat32 reiserfs xfs jfs hfs hfs+ reiser4 ufs"
+MOUNT_OPT="ro"
+echo 'allowing slow usb device some more time to register'
+echo -n "please wait 10"
+echo -ne "\b\b  "
+for timeout in 9 8 7 6 5 4 3 2 1 go 
+do
+echo -ne "\b$timeout"
+sleep 1
+done
+if [ -z "$NODES" ]
+then 
+NODES=`ls /dev/cd*` 2>/dev/null
+NODES="$NODES `ls /dev/h*`" 2>/dev/null
+NODES="$NODES `ls /dev/s*`" 2>/dev/null
+NODES="$NODES `ls /dev/m*`" 2>/dev/null
+fi
+
+
+for __nodes in $NODES
+do
+  if [ -b $__nodes ]
+  then
+    for __FS in $FS
+    do
+      #echo trying $__nodes with -t $__FS
+
+      if ( mount $__nodes /mnt/live_cdrom -t $__FS -o $MOUNT_OPT 2>/dev/null )
+      then
+	echo $__nodes mountable 
+	if [ -e /mnt/live_cdrom/root.squashfs ]
+	then
+	  echo accessing live_cd image at $__nodes
+	  mount /mnt/live_cdrom/root.squashfs /mnt/live_root -o loop,ro || (echo "failed, continueing"; continue; )
+	  mount -t aufs -o "br:/mnt/tmpfs:/mnt/live_root" none /mnt/unionfs || (echo "failed, continueing"; continue; )
+	  for mod in /mnt/live_cdrom/squashmod/*
+	    do
+	      if [ -f $mod ]
+		then
+		mkdir "/mnt/`echo $mod | cut -d/ -f 5`" -p && mount "$mod" "/mnt/`echo $mod | cut -d/ -f 5`" -o loop,ro && mount -o "remount,append:/mnt/`echo $mod | cut -d/ -f 5`" /mnt/unionfs
+	      fi
+	  done
+	  NODES=`ls /dev/h*` 2>/dev/null
+	  NODES="$NODES `ls /dev/s*`" 2>/dev/null
+	  NODES="$NODES `ls /dev/m*`" 2>/dev/null	
+		for sw in $NODES
+		do
+		  if [ -b $sw ]
+		  then
+		  swapon $sw 2>/dev/null && echo "$sw		none	swap	sw	0 0" >> /mnt/unionfs/etc/fstab && swapoff $sw && echo "using swap on $sw" 
+		  fi
+		done
+	for real_dir in /mnt/unionfs/*
+	  do
+	    if [ -f $real_dir ]
+	      then
+	      ln -s "$real_dir" "/`echo $real_dir | cut -d/ -f4`"
+	    elif [ -d $real_dir ]
+	      then
+		echo " trying $real_dir for binding" 
+		if [ "$real_dir" = "/mnt/unionfs/dev" ]
+		  then
+		    continue
+		fi
+		if [ "$real_dir" = "/mnt/unionfs/proc" ]
+		  then
+		    continue
+		fi
+		if [ "$real_dir" = "/mnt/unionfs/sys" ]
+		  then
+		    continue
+		fi
+		if [ "$real_dir" = "/mnt/unionfs/mnt" ]
+		  then
+		    continue
+		fi
+		if [ -d "/`echo $real_dir | cut -d/ -f4`" ]
+		 then
+		  echo folder "/`echo $real_dir | cut -d/ -f4` exist"
+		else
+		  echo "mkdir /`echo $real_dir | cut -d/ -f4`"
+		  mkdir -p "/`echo $real_dir | cut -d/ -f4`"
+		fi
+		echo "mounting $real_dir on `echo $real_dir | cut -d/ -f4`"
+		mount --bind "$real_dir" "/`echo $real_dir | cut -d/ -f4`"
+	    fi
+	done
+	  
+#Special handling if udev is running
+udevpid=$(/bin/pidof udevd)
+if [ -n "${udevpid}" ]; then
+    # Settle pending uevents, then kill udev
+    /sbin/udevadm settle
+    /bin/kill ${udevpid} > /dev/null 2>&1
+    while /bin/pidof udevd >/dev/null; do
+        sleep 0.1
+    done
+fi
+# done with Special handling if udev is running
+	  rm -f /config
+	  rm -f /init
+	  rm -f /init_functions
+	  rm -rf /hooks
+	  exec /sbin/init
+	  break;
+	else 
+	  echo image not found
+	fi
+	umount /mnt/live_cdrom || ( sleep 1 && umount /mnt/live_cdrom || echo not um)
+	break
+      fi
+    done
+  fi
+done
+
+echo " congrats, :P :P :P failed to find and mount live cd...... ha ha ha :P :D, have fun with shell"
+launch_interactive_shell --exec
