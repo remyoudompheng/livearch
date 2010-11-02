@@ -1,0 +1,7 @@
+xorg
+xorg-input-drivers
+xorg-video-drivers
+mesa
+xorg-xinit
+gtk2
+

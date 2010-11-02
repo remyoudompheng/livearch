@@ -6,70 +6,11 @@ quick steps
   root@poison# make copy-pac            			//copies necessary files to your live cd dir.
   root@poison# make pacman-sync         		//create package DB for your live cd
   root@poison# make mount               			//mount the VFS to ur live cd root dir.
-  root@poison# make pacman-base         		//installs base packages
-  root@poison# make pacman-squashfs		//install squasfs modules needed for live cd
-  root@poison# make pacman-aufs			// installs aufs module
+  root@poison# make pacman-base         		//installs base packages + kernel modules
   root@poison# make pacman-kernel26     		//reinstall kernel26 and initramfs
+  root@poison# make pacman-extra         		//installs more packages
   root@poison# make mkinitramfs         		//create
   root@poison# make mksquashfs          		// compress and make squashfs file of your live cd root dir
   root@poison# make iso-image           			// your live cd is ready
 }
 
-detailed steps, good one to follow
-{
-  root@poison# make mkdir               			//to make the directory structures of your live cd
-										//      root - root directory of your live cd
-										//      boot - contains boot files for booting live cd
-										//             not same as root/boot
-										//      iso  - contains the files in fianl live cd
-
-  root@poison# make copy-pac            			//copies necessary files to your live cd dir.
-										// it copies the file ./conf/pacman.conf to ./root/etc/pacman.con
-
-  root@poison# make pacman-sync         		//create package DB for your live cd
-										//you need net connection for this.
-										//it uses the configuration file from ./conf/pacman.conf
-										//you can edit this file for your need.
-										//this uses /etc/pacman.d/mirrorlist for mirrors, not the mirrorlist in ./root/etc/pacman.d/mirrorlist. so set it correct.
-
-  root@poison# make mount               			//mount the VFS to ur live cd root dir.
-
-  root@poison# make pacman-base         		//installs base packages
-
-  root@poison# make pacman-squashfs     		// from here on pacman uses the conf file ./root/etc/pacman.conf not ./conf/pacman.conf
-										// make your changes respectively.
-										// if u r using 64 bit linux, you may have to change "Architecture = auto" to "Architecture = i686" in
-										// ./root/etc/pacman.conf file, if you want 32 bit live cd.
-
-  root@poison# make pacman-aufs         		// installs aufs module for live cd.
-
-  root@poison# make pacman-kernel26     		//reinstall kernel26 and initramfs
-										// mkinitcpio is used to create initramfs.
-										// so check out ./root/etc/mkinitcpio.conf file and make necessary changes if any.
-										// this file should contain MODULES="aufs squashfs loop" which are used by init script
-										// and remove autodetect from hooks and add usb.
-										// the above 2 changes are made by makefile automatically, its advised to check it again.
-
- root@poison# make mkinitramfs         			//copies and creates initramfs for live cd.
-										// this uses the init script in ./conf/init
-										// its just an shell script. you should be able to understand it.
-										// try it out. its of more fun and interest. :D
-
-  root@poison# make pacman-adons
-  root@poison# make pacman-xorg
-  root@poison# make pacman-xfce
-										// add package which u want to be in live cd to ADONS variable in Makefile
-										// the above 3 commands installs xorg, xfce4.
-										// manually edit ./root/etc/rc.conf to add start up service
-										// it possible create your own script in ./root/etc/rc.d/ to run xfce-session automatically.
-					// by default root password is not set and needed to login. you can set one by using "chroot ./root passwd"
-					// you can make all changes like editing thi ./boot/grub/menu.lst to change the menu entry name
-					// edit ./root/etc/rc.conf to set hostname.
-					// edit ./root/etc/rc.sysinit to display your name instead of "Arch linu" while booting etc......
-  
-root@poison# make mksquashfs       			// compress and make squashfs file of your live cd root dir
-										// the compressed file is placed in ./iso as file root.squashfs
-
-  root@poison# make iso-image           			// your live cd is ready
-
-}
