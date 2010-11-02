@@ -35,7 +35,7 @@ umount:
 mkdir: 
 	mkdir -p boot root/{var/{lib/{pacman,dbus},cache/pacman/pkg,run},dev,proc,sys,etc/pacman.d,root,tmp} iso
 clean: umount
-	rm -rf boot root
+	rm -rf boot root iso
 
 # pacman maintenance operations
 pacman-sync:

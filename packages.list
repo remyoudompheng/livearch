@@ -11,4 +11,5 @@ linux-firmware
 mkinitcpio-nfs-utils
 wireless_tools
 zd1211-firmware
+zsh
 

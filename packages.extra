@@ -1,6 +1,13 @@
 gvim
 emacs
+zsh
 gparted
-gnome
 gstreamer0.10-ugly-plugins
+
+firefox
+totem
+gnome-session
+gnome-control-center
+gnome-applets
+network-manager-applet
 
