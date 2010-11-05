@@ -9,9 +9,16 @@ firefox
 evince
 xpdf
 totem
-gnome-session
-gnome-control-center
 gnome-applets
+gnome-control-center
+gnome-icon-theme
+gnome-session
+gnome-terminal
+gnome-themes
+metacity
+nautilus
+notification-daemon
+yelp
 network-manager-applet
 
 pidgin
